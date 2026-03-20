@@ -1,0 +1,93 @@
+import json
+import socket
+from typing import Dict, List, Optional
+
+import requests
+
+from config import OLLAMA_HOST, OLLAMA_MODEL, LLM_TEMPERATURE, LLM_NUM_CTX
+
+def _ollama_alive(host: str) -> bool:
+    try:
+        # quick TCP check
+        url = host.replace("http://", "").replace("https://", "")
+        hostname, port = url.split(":")
+        with socket.create_connection((hostname, int(port)), timeout=0.5):
+            return True
+    except Exception:
+        return False
+
+def generate_release_notes_ai(
+    commits: List[Dict],
+    release_title: Optional[str] = None,
+    audience: str = "engineering",
+    style: str = "conventional",  # 'conventional' | 'changelog' | 'executive'
+    extra_context: Optional[str] = None,
+    model: Optional[str] = None,
+    temperature: Optional[float] = None,
+) -> str:
+    """
+    Use Ollama chat endpoint to produce well-structured Markdown release notes.
+    """
+    if not commits:
+        return "No commits found in the selected range."
+
+    if not _ollama_alive(OLLAMA_HOST):
+        raise RuntimeError(f"Ollama is not reachable at {OLLAMA_HOST}. Is `ollama serve` running?")
+
+    # Prepare compact JSON for the model
+    slim_commits = [
+        {
+            "hash": c["hash"][:7],
+            "date": c["date"],
+            "author": c["author"],
+            "subject": c["subject"],
+            "body": c.get("body", "")[:2000],  # safety truncation
+        }
+        for c in commits
+    ]
+    commits_json = json.dumps(slim_commits, ensure_ascii=False)
+
+    sys_prompt = f"""You are an expert release notes writer.
+- Produce clear, accurate, non-hallucinated release notes in **Markdown**.
+- Only use the information in the provided commits JSON.
+- Prefer grouping by categories: Features, Fixes, Performance, Refactor, Docs, Tests, CI, Build, Breaking Changes, Others.
+- Write concise, actionable bullets. Avoid duplications.
+- If you infer a PR number from subject like '(#123)', you may include it verbatim, but do not guess missing data.
+- Keep tone suitable for '{audience}' audience.
+- Style preset: {style}.
+"""
+
+    user_prompt = f"""Generate release notes. Title: "{release_title or 'Release Notes'}".
+Commits (JSON array):
+{commits_json}
+
+Instructions:
+- Start with '# {release_title or "Release Notes"}'.
+- Then write a one-paragraph summary.
+- Then sections with '## <Category>' and bullet points.
+- Under 'Breaking Changes' explicitly call out any breaking changes if evident (e.g., '!' in conventional commits).
+- End with '### Contributors' listing unique authors (from commits).
+{"Additional context:\n" + extra_context if extra_context else ""}"""
+
+    payload = {
+        "model": (model or OLLAMA_MODEL),
+        "messages": [
+            {"role": "system", "content": sys_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+        "stream": False,
+        "options": {
+            "temperature": float(temperature if temperature is not None else LLM_TEMPERATURE),
+            "num_ctx": LLM_NUM_CTX,
+        },
+    }
+
+    resp = requests.post(f"{OLLAMA_HOST}/api/chat", json=payload, timeout=120)
+    if resp.status_code != 200:
+        raise RuntimeError(f"Ollama error {resp.status_code}: {resp.text}")
+
+    data = resp.json()
+    text = data.get("message", {}).get("content") or data.get("response") or ""
+    if not text.strip():
+        raise RuntimeError("LLM returned empty response.")
+    return text.strip()

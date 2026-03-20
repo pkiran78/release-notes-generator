@@ -1,0 +1,20 @@
+# === Core app deps ===
+# Gradio 6.x UI (you’re on 6.3.0); pin to 6.* to avoid future breaking changes during the hackathon
+gradio>=6.3.0,<6.6.0
+
+# HTTP client for Ollama native REST (/api/chat)
+requests>=2.31.0,<3.0.0
+
+# Optional: nice JSON pretty-print in Makefile test (jq is a system package, not Python)
+
+# OpenAI SDK (used for Ollama's OpenAI-compatible /v1 endpoint)
+openai>=1.45.0,<2
+
+# HTTP client for DellAI provider
+httpx
+
+# DellAI authentication (requires Dell Artifactory — installed separately)
+# pip install aia-auth-client==0.0.8 --trusted-host artifacts.dell.com --extra-index-url https://artifacts.dell.com/artifactory/api/pypi/agtsdk-1007569-pypi-prd-local/simple
+
+# === Optional: env management (if you load .env for OLLAMA_HOST / OLLAMA_MODEL) ===
+# python-dotenv>=1.0.0,<2.0.0

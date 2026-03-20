@@ -1,0 +1,29 @@
+# release-notes-model.Modelfile
+# Base model: pick the one you validated locally.
+# You can swap to llama3.2:latest or qwen2.5:14b if you prefer.
+FROM llama3:latest
+
+# --- Runtime parameters baked into the model ---
+# Bigger context is critical to fit your commit JSON comfortably.
+PARAMETER num_ctx 32768
+
+# Stable, factual outputs for technical summarization.
+PARAMETER temperature 0.2
+PARAMETER top_p 0.9
+PARAMETER repeat_penalty 1.05
+# Optional: cap tokens if you want tighter outputs (uncomment to enforce)
+# PARAMETER num_predict 1200
+
+# Keep the model hot for snappier UI during demos.
+# (You can still override keep_alive at request time if needed)
+# PARAMETER keep_alive 5m
+
+# --- Prompting defaults ---
+# A domain-specific system instruction so the model consistently writes good notes.
+SYSTEM """
+You are an expert technical writer specialized in generating accurate,
+concise, well-structured release notes from raw Git commit data.
+Group by features, fixes, performance, refactors, docs, tests, CI, build,
+and clearly call out breaking changes. Do not invent information.
+Use crisp, actionable bullets and professional tone.
+"""
