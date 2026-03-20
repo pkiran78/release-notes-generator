@@ -21,11 +21,6 @@ LLM_PROVIDERS = {
         "api_key_env": "OPENAI_API_KEY",
         "api_key_default": "ollama",
     },
-    "DellAI": {
-        "base_url": os.getenv("DELLAI_BASE_URL", "https://aia.gateway.dell.com/genai/dev/v1/"),
-        "model": os.getenv("DELLAI_MODEL", "gpt-oss-120b"),
-        "api_key_env": None,  # uses aia_auth SSO token
-    },
 }
 
 DEFAULT_LLM_PROVIDER = "Ollama"

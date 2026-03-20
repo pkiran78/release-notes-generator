@@ -18,4 +18,4 @@ chmod +x prereq.sh
 
 # Build Docker image using: make build
 
-# Run release notes generator: make run
+# Run release notes generator (Ollama): make run

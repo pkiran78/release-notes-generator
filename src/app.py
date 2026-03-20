@@ -8,7 +8,6 @@ from config import (
     DEFAULT_GROUP_CONVENTIONAL,
     DEFAULT_OUTPUT_MARKDOWN,
     GIT_CLONE_DEPTH,
-    LLM_PROVIDERS,
     DEFAULT_LLM_PROVIDER,
 )
 from git_utils import clone_or_use_repo, checkout_ref, get_commits, get_commits_multi_repo, normalize_date_value
@@ -46,7 +45,6 @@ def generate_handler(
         use_ai: bool,
         audience: str,
         extra_context: str,
-        llm_provider: str,
 ) -> Tuple[str, str]:
     if not repo_url_or_path or not repo_url_or_path.strip():
         return ("❌ Please provide at least one Git repository URL or local path.", "")
@@ -96,7 +94,7 @@ def generate_handler(
                     commits=commits,
                     audience=audience or "engineering",
                     extra_context=extra_context or None,
-                    provider=llm_provider or DEFAULT_LLM_PROVIDER,
+                    provider=DEFAULT_LLM_PROVIDER,
                 )
             else:
                 notes = format_release_notes_plain(
@@ -134,7 +132,7 @@ def generate_handler(
                 commits=commits,
                 audience=audience or "engineering",
                 extra_context=extra_context or None,
-                provider=llm_provider or DEFAULT_LLM_PROVIDER,
+                provider=DEFAULT_LLM_PROVIDER,
             )
         else:
             notes = format_release_notes_plain(
@@ -183,7 +181,7 @@ def publish_handler(
     )
 
 
-HEADER_IMAGE_PATH = os.path.join(os.path.dirname(__file__), "dell_banner.png")
+HEADER_IMAGE_PATH = os.path.join(os.path.dirname(__file__), "banner.png")
 
 css = """
 #banner-img img { width: 100% !important; height: auto !important; object-fit: cover; }
@@ -193,7 +191,8 @@ css = """
 """
 
 with gr.Blocks(title="AI Release Notes Generator", css=css) as demo:
-    gr.Image(value=HEADER_IMAGE_PATH, show_label=False, interactive=False, container=False, elem_id="banner-img")
+    if os.path.exists(HEADER_IMAGE_PATH):
+        gr.Image(value=HEADER_IMAGE_PATH, show_label=False, interactive=False, container=False, elem_id="banner-img")
 
     with gr.Row():
         repo_url_or_path = gr.Textbox(
@@ -239,12 +238,7 @@ with gr.Blocks(title="AI Release Notes Generator", css=css) as demo:
             lines=2,
         )
         gr.Markdown("### LLM Settings")
-        with gr.Row():
-            llm_provider = gr.Dropdown(
-                label="LLM",
-                choices=list(LLM_PROVIDERS.keys()),
-                value=DEFAULT_LLM_PROVIDER,
-            )
+        gr.Markdown("LLM: Ollama")
  
     use_ai.change(fn=lambda v: gr.Column(visible=v), inputs=use_ai, outputs=ai_options_col)
  
@@ -259,7 +253,6 @@ with gr.Blocks(title="AI Release Notes Generator", css=css) as demo:
         inputs=[
             repo_url_or_path, access_token, branch_or_tag, start_date, end_date,
             use_ai, audience, extra_context,
-            llm_provider
         ],
         outputs=[status, notes],
     )
@@ -268,8 +261,7 @@ with gr.Blocks(title="AI Release Notes Generator", css=css) as demo:
     gr.Markdown("### Publish Release Notes to Documentation")
     gr.Markdown(
         "*Publish the generated release notes above to the "
-        "[dell-sdk-documentation](https://eos2git.cec.lab.emc.com/OTEL-automation/dell-sdk-documentation) repo "
-        "(staging branch).*"
+        "documentation repository (staging branch).*"
     )
     with gr.Row():
         release_version = gr.Textbox(
@@ -277,14 +269,14 @@ with gr.Blocks(title="AI Release Notes Generator", css=css) as demo:
             placeholder="e.g., 1.15.0",
         )
         docs_access_token = gr.Textbox(
-            label="Git Access Token (for dell-sdk-documentation)",
+            label="Git Access Token",
             placeholder="ghp_xxxxxxxxxxxx",
             type="password",
         )
     with gr.Row():
         docs_repo_url = gr.Textbox(
-            label="Documentation Repo URL (optional, override default)",
-            placeholder="https://eos2git.cec.lab.emc.com/OTEL-automation/dell-sdk-documentation.git",
+            label="Documentation Repo URL",
+            placeholder="https://github.com/org/docs-repo.git",
         )
 
     publish_btn = gr.Button("Publish to Staging", variant="secondary")

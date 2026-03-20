@@ -33,9 +33,6 @@ COPY . /app
 RUN git config --global http.sslverify false
 COPY requirements.txt /app/
 RUN pip install --no-cache-dir -r /app/requirements.txt
-RUN pip install --no-cache-dir aia-auth-client==0.0.8 \
-    --trusted-host artifacts.dell.com \
-    --extra-index-url https://artifacts.dell.com/artifactory/api/pypi/agtsdk-1007569-pypi-prd-local/simple
 
 # ================================
 #  Environment Variables

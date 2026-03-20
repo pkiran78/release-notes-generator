@@ -3,7 +3,6 @@ import socket
 from typing import Dict, List, Optional
 
 import os
-import httpx
 from openai import APIConnectionError, APITimeoutError, OpenAI
 
 from config import OLLAMA_HOST, LLM_PROVIDERS, LLM_TEMPERATURE, LLM_NUM_CTX
@@ -22,23 +21,10 @@ def _build_client(provider: str) -> tuple:
     """Return (OpenAI client, model_name) for the given provider."""
     cfg = LLM_PROVIDERS[provider]
 
-    if provider == "DellAI":
-        token = os.getenv("DELLAI_TOKEN")
-        if not token:
-            from aia_auth import auth
-            access_token = auth.sso()
-            token = access_token.token
-        http_client = httpx.Client(verify=False)
-        client = OpenAI(
-            base_url=cfg["base_url"],
-            http_client=http_client,
-            api_key=token,
-        )
-    else:
-        client = OpenAI(
-            base_url=cfg["base_url"],
-            api_key=os.getenv(cfg["api_key_env"], cfg.get("api_key_default", "")),
-        )
+    client = OpenAI(
+        base_url=cfg["base_url"],
+        api_key=os.getenv(cfg["api_key_env"], cfg.get("api_key_default", "")),
+    )
 
     return client, cfg["model"]
 

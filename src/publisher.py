@@ -1,8 +1,7 @@
-"""
-Publisher module — Publishes generated release notes to dell-sdk-documentation repo.
+"""Publisher module — Publishes generated release notes to a documentation repo.
 
 Workflow:
-1. Clone dell-sdk-documentation repo (or use local copy)
+1. Clone documentation repo (or use local copy)
 2. Checkout staging branch
 3. Create docs/release_notes/v{version_folder}/ directory
 4. Create .nav and index.md inside the version folder
@@ -19,13 +18,11 @@ import tempfile
 from datetime import datetime
 from typing import Optional, Tuple
 
-# Default repo URL for dell-sdk-documentation
-DOCS_REPO_URL = "https://eos2git.cec.lab.emc.com/OTEL-automation/dell-sdk-documentation.git"
+# Default repo URL for documentation repo (optional)
+DOCS_REPO_URL = os.getenv("DOCS_REPO_URL", "").strip()
 
-# Copyright header used in .nav files
-NAV_COPYRIGHT_HEADER = """# Copyright © 2022 Dell Inc. or its subsidiaries. All Rights Reserved.
-#
-# custom navigation order and structure
+# Header used in .nav files
+NAV_COPYRIGHT_HEADER = """# custom navigation order and structure
 # (update this when adding/removing/moving markdown files)
 # --------------------------------------------------------
 """
@@ -75,25 +72,12 @@ def _create_version_nav(version_dir: str) -> None:
         f.write(nav_content)
 
 
-# Boilerplate appended to every release
-LIBRARIES_WEB_DASHBOARD = """## Libraries Web Dashboard
-
-We are pleased to release our new Library web Browser.  With this new web
-browser, you can see all the released libraries for Dell SDK Libs and Dell SDK
-Core; their description, their arguments, return value, Exception raise, and
-source code if required. It also contains a search to easily find it.
-
-* Dell-SDK-Libs: <https://sdk-libs.otelsip.k8s.cec.delllabs.net/home/>
-"""
-
-
 def _post_process_release_notes(content: str, version: str) -> str:
     """
-    Post-process AI-generated release notes to match dell-sdk-documentation format:
+    Post-process AI-generated release notes to match documentation format:
     1. Ensure title is the version (# vX.Y.Z)
     2. Add '## Release Date' section with today's date right after the title
     3. Remove empty sections (## heading with no content before next heading)
-    4. Append '## Libraries Web Dashboard' boilerplate at the bottom
     """
     display_version = _version_to_display(version).replace("V", "v")
     lines = content.strip().splitlines()
@@ -160,24 +144,7 @@ def _post_process_release_notes(content: str, version: str) -> str:
             cleaned_lines.append(line)
             j += 1
 
-    # Step 4: Remove existing Libraries Web Dashboard if AI generated one, then append our standard one
-    final_lines = []
-    skip_until_next_heading = False
-    for line in cleaned_lines:
-        if line.startswith("## ") and "libraries" in line.lower() and "dashboard" in line.lower():
-            skip_until_next_heading = True
-            continue
-        if skip_until_next_heading:
-            if line.startswith("## ") or line.startswith("# "):
-                skip_until_next_heading = False
-                final_lines.append(line)
-            continue
-        final_lines.append(line)
-
-    # Remove trailing ### Contributors or similar if present — keep it before the dashboard
-    text = "\n".join(final_lines).rstrip()
-    text += "\n\n" + LIBRARIES_WEB_DASHBOARD + "\n"
-
+    text = "\n".join(cleaned_lines).rstrip() + "\n"
     return text
 
 
@@ -251,7 +218,7 @@ def publish_release_notes(
     commit_message: Optional[str] = None,
 ) -> Tuple[str, str]:
     """
-    Publish release notes to dell-sdk-documentation repo.
+    Publish release notes to documentation repo.
 
     Parameters
     ----------
@@ -262,7 +229,7 @@ def publish_release_notes(
     access_token : str, optional
         Git access token for cloning/pushing. Injected into the repo URL.
     docs_repo_url : str, optional
-        Override the default dell-sdk-documentation repo URL.
+        Override the default documentation repo URL.
     commit_message : str, optional
         Custom commit message. Defaults to 'Add release notes for vX.Y.Z'.
 
@@ -278,6 +245,11 @@ def publish_release_notes(
         return ("❌ Please provide a release version.", "")
 
     repo_url = (docs_repo_url or DOCS_REPO_URL).strip()
+    if not repo_url:
+        return (
+            "❌ Documentation Repo URL is required.",
+            "Set DOCS_REPO_URL env var or provide a URL in the UI.",
+        )
     version = version.strip()
     folder_name = _version_to_folder_name(version)
     display_version = _version_to_display(version)
@@ -298,7 +270,7 @@ def publish_release_notes(
     try:
         # Step 1: Clone the repo
         tmpdir = tempfile.mkdtemp(prefix="rn-publish-")
-        log_lines.append(f"📦 Cloning dell-sdk-documentation to temp directory...")
+        log_lines.append(f"📦 Cloning documentation repo to temp directory...")
         _run_git(["clone", repo_url, tmpdir + "/repo"], cwd=tmpdir)
         repo_dir = os.path.join(tmpdir, "repo")
         log_lines.append(f"✅ Cloned successfully.")
