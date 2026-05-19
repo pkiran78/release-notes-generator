@@ -3,7 +3,7 @@ import os
 # Load from env with safe defaults
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://127.0.0.1:11434")
 # OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:3b")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "release-notes-llama3")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gemma4:latest")
 
 # LLM options: temperature etc. (Ollama uses 'options' not 'parameters')
 LLM_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0.2"))
